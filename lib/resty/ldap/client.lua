@@ -137,7 +137,8 @@ local function _init_socket(self)
     end
 
     if socket_config.start_tls or socket_config.ldaps then
-        local _, err = sock:sslhandshake(true, host, socket_config.ssl_verify)
+        local _
+        _, err = sock:sslhandshake(true, host, socket_config.ssl_verify)
         if err ~= nil then
             return fmt("do TLS handshake on %s:%s failed: %s",
                         host, tostring(port), err)

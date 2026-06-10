@@ -28,7 +28,7 @@ local function calculate_payload_length(encStr, pos, socket)
         local elenCalc = 0
         local elenNext
 
-        for i = 1, elen do
+        for _ = 1, elen do
             elenCalc = elenCalc * 256
             encStr = encStr .. socket:receive(1)
             pos, elenNext = bunpack(encStr, "C", pos)
@@ -49,7 +49,8 @@ local function _start_tls(sock)
     end
 
     -- receive STARTTLS response
-    local len, err = sock:receive(2)
+    local len
+    len, err = sock:receive(2)
     if not len then
         if err == "timeout" then
             sock:close()
@@ -58,18 +59,20 @@ local function _start_tls(sock)
     end
     local _, packet_len, packet_header = calculate_payload_length(len, 2, sock)
 
-    local packet, err = sock:receive(packet_len)
+    local packet
+    packet, err = sock:receive(packet_len)
     if not packet then
         sock:close()
         return fmt("receive response failed: %s", err)
     end
 
-    local packet = packet_header .. packet
-    local ok, res, err = pcall(rasn_decode, packet)
-    if not ok or err then
+    packet = packet_header .. packet
+    local decode_ok, res
+    decode_ok, res, err = pcall(rasn_decode, packet)
+    if not decode_ok or err then
         return nil, fmt(
             "failed to decode ldap message: %s, message: %s",
-            not ok and res or err, -- error returned in second value by pcall
+            not decode_ok and res or err, -- error returned in second value by pcall
             to_hex(packet)
         )
     end
@@ -108,14 +111,15 @@ local function _init_socket(self)
         opts.pool = socket_config.keepalive_pool_name
     end
 
-    local ok, err = sock:connect(host, port, opts)
-    if not ok then
+    local conn_ok, err = sock:connect(host, port, opts)
+    if not conn_ok then
         return fmt("connect to %s:%s failed: %s", host, tostring(port), err)
     end
 
     if socket_config.start_tls then
         -- convert connection to a STARTTLS connection only if it is a new connection
-        local count, err = sock:getreusedtimes()
+        local count
+        count, err = sock:getreusedtimes()
         if not count then
             -- connection was closed, just return instead
             return fmt("get %s:%s connection re-used time failed: %s",
@@ -124,7 +128,7 @@ local function _init_socket(self)
 
         if count == 0 then
             -- STARTTLS
-            local err = _start_tls(sock)
+            err = _start_tls(sock)
             if err then
                 return fmt("launch STARTTLS connection on %s:%s failed: %s",
                             host, tostring(port), err)
@@ -153,7 +157,8 @@ local function _send_recieve(cli, request, multi_resp_hint)
     local socket = cli.socket
 
     -- send req
-    local bytes, err = cli.socket:send(request)
+    local bytes
+    bytes, err = cli.socket:send(request)
     if not bytes then
         return nil, fmt("send request failed: %s", err)
     end
@@ -171,7 +176,8 @@ local function _send_recieve(cli, request, multi_resp_hint)
         -- Takes the packet header of a single request body, which has a length
         -- of two bytes, where the second byte is the length of this response
         -- body packet.
-        local len, err = reader(2)
+        local len
+        len, err = reader(2)
         if not len then
             if err == "timeout" then
                 socket:close()
@@ -182,7 +188,8 @@ local function _send_recieve(cli, request, multi_resp_hint)
         local _, packet_len, packet_header = calculate_payload_length(len, 2, socket)
 
         -- Get the data of the specified length
-        local packet, err = socket:receive(packet_len)
+        local packet
+        packet, err = socket:receive(packet_len)
         if not packet then
             -- When the packet header is read but the packet body cannot be read,
             -- this error is considered unacceptable and therefore an error is
@@ -191,12 +198,13 @@ local function _send_recieve(cli, request, multi_resp_hint)
             return nil, err
         end
 
-        local packet = packet_header .. packet
-        local ok, res, err = pcall(rasn_decode, packet)
-        if not ok or err then
+        packet = packet_header .. packet
+        local decode_ok, res
+        decode_ok, res, err = pcall(rasn_decode, packet)
+        if not decode_ok or err then
             return nil, fmt(
                 "failed to decode ldap message: %s, message: %s",
-                not ok and res or err, -- error returned in second value by pcall
+                not decode_ok and res or err, -- error returned in second value by pcall
                 to_hex(packet)
             )
         end
@@ -296,7 +304,8 @@ function _M.search(self, base_dn, scope, deref_aliases, size_limit, time_limit,
         return false, err
     end
 
-    local res, err = _send_recieve(self, search_req, true) -- mark as potential multi-response operation
+    local res
+    res, err = _send_recieve(self, search_req, true) -- mark as potential multi-response operation
     if not res then
         return false, err
     end

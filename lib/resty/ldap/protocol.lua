@@ -157,19 +157,19 @@ end
 
 function _M.search_request(base_obj, scope, deref_aliases, size_limit, time_limit,
                            types_only, filter, attributes)
-    local base_obj = asn1_encode(base_obj, asn1.TAG.OCTET_STRING)
-    local scope = asn1_encode(scope, asn1.TAG.ENUMERATED)
-    local deref_aliases = asn1_encode(deref_aliases, asn1.TAG.ENUMERATED)
-    local size_limit = asn1_encode(size_limit, asn1.TAG.INTEGER)
-    local time_limit = asn1_encode(time_limit, asn1.TAG.INTEGER)
-    local types_only = asn1_encode(types_only, asn1.TAG.BOOLEAN)
+    base_obj = asn1_encode(base_obj, asn1.TAG.OCTET_STRING)
+    scope = asn1_encode(scope, asn1.TAG.ENUMERATED)
+    deref_aliases = asn1_encode(deref_aliases, asn1.TAG.ENUMERATED)
+    size_limit = asn1_encode(size_limit, asn1.TAG.INTEGER)
+    time_limit = asn1_encode(time_limit, asn1.TAG.INTEGER)
+    types_only = asn1_encode(types_only, asn1.TAG.BOOLEAN)
 
     -- compile filter
     local filter_tbl, err = filter_compiler.compile(filter)
     if not filter_tbl then
         return nil, err
     end
-    local filter = build_asn1_filters(filter_tbl)
+    filter = build_asn1_filters(filter_tbl)
 
     -- encode attributes to sequence
     local attributes_encoded = ""

@@ -159,23 +159,26 @@ local function _bind_exchange(socket, request)
         return nil, fmt("send request failed: %s", err)
     end
 
-    local len, err = socket:receive(2)
+    local len
+    len, err = socket:receive(2)
     if not len then
         socket:close()
         return nil, fmt("receive response header failed: %s", err)
     end
     local _, packet_len, packet_header = calculate_payload_length(len, 2, socket)
 
-    local packet, err = socket:receive(packet_len)
+    local packet
+    packet, err = socket:receive(packet_len)
     if not packet then
         socket:close()
         return nil, fmt("receive response failed: %s", err)
     end
 
-    local ok, res, err = pcall(rasn_decode, packet_header .. packet)
-    if not ok or err then
+    local decode_ok, res
+    decode_ok, res, err = pcall(rasn_decode, packet_header .. packet)
+    if not decode_ok or err then
         return nil, fmt("failed to decode ldap message: %s, message: %s",
-            not ok and res or err,
+            not decode_ok and res or err,
             to_hex(packet_header .. packet))
     end
 
@@ -337,7 +340,8 @@ function _M.gssapi_bind(self, service_name)
 
     local sock = self.socket
 
-    local reused, err = sock:getreusedtimes()
+    local reused
+    reused, err = sock:getreusedtimes()
     if not reused then
         return false, fmt("getreusedtimes failed: %s", err)
     end
@@ -349,8 +353,8 @@ function _M.gssapi_bind(self, service_name)
         return true
     end
 
-    local ok, ctx = pcall(rasn_gssapi_new, service_name)
-    if not ok then
+    local gss_ok, ctx = pcall(rasn_gssapi_new, service_name)
+    if not gss_ok then
         sock:close()
         return false, fmt("GSSAPI context init failed: %s", ctx)
     end
@@ -369,7 +373,8 @@ function _M.gssapi_bind(self, service_name)
         end
         gss_complete = complete
 
-        local res, err = _bind_exchange(sock, protocol.sasl_bind_request("GSSAPI", out_token))
+        local res
+        res, err = _bind_exchange(sock, protocol.sasl_bind_request("GSSAPI", out_token))
         if not res then
             sock:close()
             return false, fmt("GSSAPI bind exchange failed: %s", err)
@@ -430,7 +435,8 @@ function _M.gssapi_bind(self, service_name)
         return false, fmt("GSSAPI wrap failed: %s", wrapped)
     end
 
-    local res, err = _bind_exchange(sock, protocol.sasl_bind_request("GSSAPI", wrapped))
+    local res
+    res, err = _bind_exchange(sock, protocol.sasl_bind_request("GSSAPI", wrapped))
     if not res then
         sock:close()
         return false, fmt("GSSAPI SSF exchange failed: %s", err)

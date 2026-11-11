@@ -1,6 +1,6 @@
 local lpeg = require("lpeg")
-local P, R, S, V = lpeg.P, lpeg.R, lpeg.S, lpeg.V
-local C, Ct, Cg, Cp, Cc, Cf = lpeg.C, lpeg.Ct, lpeg.Cg, lpeg.Cp, lpeg.Cc, lpeg.Cf
+local P, R, V = lpeg.P, lpeg.R, lpeg.V
+local Ct = lpeg.Ct
 
 local string_char  = string.char
 local table_insert = table.insert
@@ -20,10 +20,6 @@ _M.FILTER_TYPE_APPROX  = 'approx'
 _M.FILTER_TYPE_GREATER = 'greater'
 _M.FILTER_TYPE_LESS    = 'less'
 
-
-local function pack(...)
-    return { n = select('#', ...), ... }
-end
 
 -- Utility
 local function maybe(pattern)
@@ -84,7 +80,8 @@ local filter = P{
             return cOPBody(_M.OP_TYPE_NOT, ...)
         end,
     ITEM = V'ITEM_PRESENT_AND_SUBSTRING' +  V'ITEM_SIMPLE',
-    ITEM_PRESENT_AND_SUBSTRING = (V'ATTRIBUTE_DESCRIPTION' * V'FILTER_TYPE_EQUAL' * V'ATTRIBUTE_VALUE_SUBSTRING') / function(...)
+    ITEM_PRESENT_AND_SUBSTRING =
+        (V'ATTRIBUTE_DESCRIPTION' * V'FILTER_TYPE_EQUAL' * V'ATTRIBUTE_VALUE_SUBSTRING') / function(...)
         return cItemBody(nil, ...)
     end,
     ITEM_SIMPLE = V'ATTRIBUTE_DESCRIPTION' * V'FILTER_TYPE' * V'ATTRIBUTE_VALUE' / function(...)
